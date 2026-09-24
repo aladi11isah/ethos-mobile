@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RootView: View {
     @EnvironmentObject var authStore: AuthStore
@@ -467,6 +468,8 @@ struct LoadMoreRow: View {
 
 struct VaultRowView: View {
     let vault: Vault
+    @EnvironmentObject var vaultStore: VaultStore
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -489,6 +492,56 @@ struct VaultRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button(action: { performCheckIn() }) {
+                Label("Check In", systemImage: "checkmark.circle.fill")
+            }
+            .tint(.green)
+
+            Button(action: { performRefresh() }) {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .tint(.blue)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive, action: { showDeleteConfirmation = true }) {
+                Label("Delete", systemImage: "trash.fill")
+            }
+        }
+        .alert("Delete Vault", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) { performDelete() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete this vault? This action cannot be undone.")
+        }
+    }
+
+    private func performCheckIn() {
+        triggerHaptic()
+        Task {
+            await vaultStore.checkIn(vault: vault)
+        }
+    }
+
+    private func performRefresh() {
+        triggerHaptic()
+        Task {
+            await vaultStore.load()
+        }
+    }
+
+    private func performDelete() {
+        triggerHaptic()
+        Task {
+            ifNotCancelled {
+                vaultStore.error = ErrorPresentation(message: "Vault deletion is not yet implemented")
+            }
+        }
+    }
+
+    private func triggerHaptic() {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
     }
 }
 
