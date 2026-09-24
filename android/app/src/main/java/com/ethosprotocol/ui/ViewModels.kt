@@ -745,15 +745,16 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    /// Update the beneficiary for a vault (owner-only). On success the vault list is
-    /// refreshed so the UI reflects the new beneficiary immediately — matching the
+    /// Update the beneficiary for a vault (owner-only). On success the vault is
+    /// refreshed in place so the UI reflects the new beneficiary immediately — matching the
     /// same pattern used by checkIn(). Mirrors iOS VaultStore.updateBeneficiary.
+    /// Uses refreshSingle() instead of load() to avoid redundant full-list fetches (#320).
     fun updateBeneficiary(vaultId: String, newBeneficiary: String) = viewModelScope.launch {
         _state.update { it.copy(isLoading = true, error = null, beneficiaryUpdated = false) }
         when (val result = apiClient.updateBeneficiary(vaultId, newBeneficiary)) {
             is ApiResult.Success -> {
                 _state.update { it.copy(isLoading = false, beneficiaryUpdated = true) }
-                load()
+                refreshSingle(vaultId)
             }
             is ApiResult.Error -> _state.update { it.copy(isLoading = false, error = result.message) }
             ApiResult.NetworkUnavailable -> _state.update { it.copy(isLoading = false, error = "No network") }
