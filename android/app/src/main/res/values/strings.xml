@@ -21,4 +21,10 @@
     <string name="widget_balance_label">Balance</string>
     <string name="widget_beneficiary_label">Beneficiary</string>
     <string name="widget_no_vaults">No vaults available</string>
+
+    <!-- Widget accessibility content descriptions -->
+    <string name="widget_vault_name_description">Vault name</string>
+    <string name="widget_ttl_description">Time to live countdown</string>
+    <string name="widget_balance_description">Vault balance in XLM</string>
+    <string name="widget_beneficiary_description">Beneficiary account</string>
 </resources>
