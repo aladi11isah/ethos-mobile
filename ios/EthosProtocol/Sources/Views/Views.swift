@@ -351,6 +351,18 @@ struct VaultListView: View {
                     ContentUnavailableView("No Vaults", systemImage: "lock.open", description: Text("Create your first vault to get started."))
                 } else {
                     List {
+                        if let lastSync = vaultStore.lastSyncTime {
+                            HStack {
+                                Label("Last sync: \(Self.formatSyncTime(lastSync))", systemImage: "clock.badge.checkmark.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                            }
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets())
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                        }
                         ForEach(vaultStore.vaults) { vault in
                             NavigationLink(destination: VaultDetailView(vault: vault)) {
                                 VaultRowView(vault: vault)
@@ -425,6 +437,27 @@ struct VaultListView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         return formatter.localizedString(fromTimeInterval: -interval)
+    }
+
+    private static func formatSyncTime(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+
+        switch interval {
+        case 0..<60:
+            return "just now"
+        case 60..<3_600:
+            let minutes = Int(interval) / 60
+            return minutes == 1 ? "1 min ago" : "\(minutes) mins ago"
+        case 3_600..<86_400:
+            let hours = Int(interval) / 3_600
+            return hours == 1 ? "1 hour ago" : "\(hours) hours ago"
+        default:
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
+        }
     }
 }
 

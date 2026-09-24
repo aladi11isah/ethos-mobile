@@ -300,6 +300,8 @@ final class VaultStore: ObservableObject {
     @Published private(set) var queuedCheckInCount = 0
     /// Current WebSocket connection state for the real-time event stream (#255).
     @Published private(set) var socketConnectionState: VaultEventSocket.ConnectionState = .disconnected
+    /// Timestamp of the last successful vault sync, used for displaying refresh feedback.
+    @Published private(set) var lastSyncTime: Date?
 
     private var eventSocket: VaultEventSocket?
 
@@ -321,6 +323,7 @@ final class VaultStore: ObservableObject {
             ifNotCancelled {
                 vaults = page.vaults
                 nextCursor = page.nextCursor
+                lastSyncTime = Date()
                 scheduleReminders()
             }
         } catch APIError.networkUnavailable {
@@ -364,6 +367,7 @@ final class VaultStore: ObservableObject {
             } while cursor != nil
             ifNotCancelled {
                 vaults = accumulated
+                lastSyncTime = Date()
                 scheduleReminders()
             }
         } catch APIError.networkUnavailable {
