@@ -35,6 +35,9 @@ struct RootView: View {
                 NotificationService.shared.retryPendingPushTokenRegistrationIfNeeded()
             }
         }
+        .sheet(isPresented: $authStore.showPINSetup) {
+            PINSetupView()
+        }
     }
 }
 
@@ -55,31 +58,85 @@ private struct LockScreenView: View {
     @EnvironmentObject var authStore: AuthStore
     @State private var error: String?
     @State private var isUnlocking = false
+    @State private var showPINInput = false
+    @State private var pinInput = ""
+    @State private var pinError: String?
 
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             VStack(spacing: 24) {
-                Image(systemName: "faceid")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.blue)
-                Text("Ethos-Protocol Locked").font(.title.bold())
-                if let error {
-                    Text(error).foregroundStyle(.red).font(.caption).multilineTextAlignment(.center)
+                if showPINInput {
+                    pinInputView
+                } else {
+                    biometricView
                 }
-                Button(action: unlock) {
-                    Label(isUnlocking ? "Unlocking…" : "Unlock", systemImage: "faceid")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isUnlocking)
             }
             .padding(32)
         }
-        .onAppear(perform: unlock)
+        .onAppear(perform: attemptBiometricUnlock)
     }
 
-    private func unlock() {
+    private var biometricView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "faceid")
+                .font(.system(size: 64))
+                .foregroundStyle(.blue)
+            Text("Ethos-Protocol Locked").font(.title.bold())
+            if let error {
+                Text(error).foregroundStyle(.red).font(.caption).multilineTextAlignment(.center)
+            }
+            Button(action: attemptBiometricUnlock) {
+                Label(isUnlocking ? "Unlocking…" : "Unlock", systemImage: "faceid")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isUnlocking)
+            if PINAuthenticationService.shared.isPINSetup() {
+                Button(action: { showPINInput = true }) {
+                    Text("Use PIN Instead")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var pinInputView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.blue)
+            Text("Ethos-Protocol Locked").font(.title.bold())
+            Text("Enter your 6-digit PIN").font(.subheadline).foregroundStyle(.secondary)
+            SecureField("PIN", text: $pinInput)
+                .textContentType(.oneTimeCode)
+                .keyboardType(.numberPad)
+                .font(.system(size: 20, weight: .medium, design: .monospaced))
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 150)
+                .padding(12)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+                .disabled(isUnlocking)
+            if let error = pinError {
+                Text(error).foregroundStyle(.red).font(.caption).multilineTextAlignment(.center)
+            }
+            Button(action: verifyPIN) {
+                Label(isUnlocking ? "Verifying…" : "Unlock", systemImage: "checkmark")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isUnlocking || pinInput.count != 6)
+            Button(action: { showPINInput = false; pinInput = ""; pinError = nil }) {
+                Text("Back to Biometric")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func attemptBiometricUnlock() {
         guard !isUnlocking else { return }
         isUnlocking = true
         error = nil
@@ -89,9 +146,25 @@ private struct LockScreenView: View {
                 authStore.isLocked = false
             } catch {
                 self.error = error.localizedDescription
+                if PINAuthenticationService.shared.isPINSetup() {
+                    showPINInput = true
+                }
             }
             isUnlocking = false
         }
+    }
+
+    private func verifyPIN() {
+        guard !isUnlocking else { return }
+        isUnlocking = true
+        pinError = nil
+        do {
+            try PINAuthenticationService.shared.verifyPIN(pinInput)
+            authStore.isLocked = false
+        } catch {
+            pinError = error.localizedDescription
+        }
+        isUnlocking = false
     }
 }
 
@@ -1736,5 +1809,115 @@ struct BeneficiaryAcceptanceView: View {
             }
             isAccepting = false
         }
+    }
+}
+
+// MARK: - PIN Setup
+
+struct PINSetupView: View {
+    @EnvironmentObject var authStore: AuthStore
+    @Environment(\.dismiss) var dismiss
+    @State private var pinInput = ""
+    @State private var pinConfirm = ""
+    @State private var error: String?
+    @State private var isSetupInProgress = false
+
+    var pinsMatch: Bool {
+        !pinInput.isEmpty && pinInput == pinConfirm
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.blue)
+                    Text("Set up Your PIN").font(.title.bold())
+                    Text("This 6-digit PIN will be used if biometric authentication is unavailable")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 16)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Enter 6-digit PIN").font(.caption.bold()).foregroundStyle(.secondary)
+                        SecureField("PIN", text: $pinInput)
+                            .textContentType(.oneTimeCode)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 18, weight: .medium, design: .monospaced))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 150)
+                            .padding(12)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                            .disabled(isSetupInProgress)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Confirm PIN").font(.caption.bold()).foregroundStyle(.secondary)
+                        SecureField("Confirm PIN", text: $pinConfirm)
+                            .textContentType(.oneTimeCode)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 18, weight: .medium, design: .monospaced))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 150)
+                            .padding(12)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                            .disabled(isSetupInProgress)
+                    }
+
+                    if let error {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    if !pinInput.isEmpty && !pinConfirm.isEmpty && pinInput != pinConfirm {
+                        Text("PINs do not match")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    Button(action: setupPIN) {
+                        Label(isSetupInProgress ? "Setting up…" : "Continue", systemImage: "checkmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!pinsMatch || isSetupInProgress)
+
+                    Button(action: { dismiss() }) {
+                        Text("Skip for Now")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isSetupInProgress)
+                }
+            }
+            .padding(32)
+        }
+    }
+
+    private func setupPIN() {
+        guard !isSetupInProgress else { return }
+        isSetupInProgress = true
+        error = nil
+
+        do {
+            try PINAuthenticationService.shared.setupPIN(pinInput)
+            authStore.showPINSetup = false
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+
+        isSetupInProgress = false
     }
 }

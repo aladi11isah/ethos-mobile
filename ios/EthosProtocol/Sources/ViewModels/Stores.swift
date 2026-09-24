@@ -19,6 +19,7 @@ final class AuthStore: ObservableObject {
     @Published var isLoading = false
     @Published var error: ErrorPresentation?
     @Published var isLocked = false
+    @Published var showPINSetup = false
 
     // Injected for testing; defaults to the real APIClient call. See
     // BackgroundRefreshService.vaultListProvider for the same pattern.
@@ -80,6 +81,9 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
+                if !PINAuthenticationService.shared.isPINSetup() {
+                    showPINSetup = true
+                }
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
