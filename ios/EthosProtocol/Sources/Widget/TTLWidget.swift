@@ -54,7 +54,7 @@ struct TTLTimelineProvider: AppIntentTimelineProvider {
         VaultEntry(
             date: .now,
             vaultID: "vault-placeholder",
-            vaultName: "My Vault",
+            vaultName: LocalizedStrings.myVault,
             ttlRemaining: 86_400,
             isExpiringSoon: false,
             balance: "1.0000000 XLM",
@@ -66,7 +66,7 @@ struct TTLTimelineProvider: AppIntentTimelineProvider {
         VaultEntry(
             date: .now,
             vaultID: "vault-placeholder",
-            vaultName: "My Vault",
+            vaultName: LocalizedStrings.myVault,
             ttlRemaining: 86_400,
             isExpiringSoon: false,
             balance: "1.0000000 XLM",
@@ -93,7 +93,7 @@ struct TTLTimelineProvider: AppIntentTimelineProvider {
             entry = VaultEntry(
                 date: .now,
                 vaultID: selected?.id ?? "",
-                vaultName: selected.map { String($0.id.prefix(12)) + "…" } ?? "No Active Vault",
+                vaultName: selected.map { String($0.id.prefix(12)) + "…" } ?? LocalizedStrings.noActiveVault,
                 ttlRemaining: selected?.ttlRemaining,
                 isExpiringSoon: selected?.isExpiringSoon ?? false,
                 balance: selected.map { formatBalance($0.balance) } ?? "—",
@@ -103,7 +103,7 @@ struct TTLTimelineProvider: AppIntentTimelineProvider {
             entry = VaultEntry(
                 date: .now,
                 vaultID: "",
-                vaultName: "Unavailable",
+                vaultName: LocalizedStrings.unavailable,
                 ttlRemaining: nil,
                 isExpiringSoon: false,
                 balance: "—",
@@ -163,7 +163,7 @@ struct TTLWidgetView: View {
     // MARK: .systemSmall — vault name + TTL countdown only
     private var smallView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Ethos-Protocol", systemImage: "lock.shield.fill")
+            Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
             Text(entry.vaultName)
@@ -177,7 +177,7 @@ struct TTLWidgetView: View {
                 Text("—").font(.subheadline).foregroundStyle(.secondary)
             }
             if entry.isExpiringSoon {
-                Label("Expiring soon", systemImage: "exclamationmark.triangle.fill")
+                Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
@@ -190,7 +190,7 @@ struct TTLWidgetView: View {
     // MARK: .systemMedium — TTL + balance
     private var mediumView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Ethos-Protocol", systemImage: "lock.shield.fill")
+            Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
             Text(entry.vaultName)
@@ -209,7 +209,7 @@ struct TTLWidgetView: View {
                     .foregroundStyle(.secondary)
             }
             if entry.isExpiringSoon {
-                Label("Expiring soon", systemImage: "exclamationmark.triangle.fill")
+                Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
@@ -222,7 +222,7 @@ struct TTLWidgetView: View {
     // MARK: .systemLarge — TTL + balance + beneficiary
     private var largeView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Ethos-Protocol", systemImage: "lock.shield.fill")
+            Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
             Text(entry.vaultName)
@@ -230,30 +230,30 @@ struct TTLWidgetView: View {
                 .lineLimit(1)
             Divider()
             if let ttl = entry.ttlRemaining {
-                LabeledContent("TTL") {
+                LabeledContent(LocalizedStrings.ttlLabel) {
                     Text(formatDuration(ttl))
                         .foregroundStyle(entry.isExpiringSoon ? .orange : .primary)
                 }
                 .font(.subheadline)
             } else {
-                LabeledContent("TTL") {
+                LabeledContent(LocalizedStrings.ttlLabel) {
                     Text("—").foregroundStyle(.secondary)
                 }
                 .font(.subheadline)
             }
-            LabeledContent("Balance") {
+            LabeledContent(LocalizedStrings.balanceLabel) {
                 Text(entry.balance)
                     .foregroundStyle(.secondary)
             }
             .font(.subheadline)
-            LabeledContent("Beneficiary") {
+            LabeledContent(LocalizedStrings.beneficiaryLabel) {
                 Text(entry.beneficiary)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             .font(.subheadline)
             if entry.isExpiringSoon {
-                Label("Expiring soon", systemImage: "exclamationmark.triangle.fill")
+                Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .padding(.top, 4)
@@ -268,7 +268,7 @@ struct TTLWidgetView: View {
     // MARK: .accessoryRectangular / .accessoryCircular — compact lock-screen view
     private var compactView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Ethos-Protocol", systemImage: "lock.shield.fill")
+            Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
             Text(entry.vaultName)
@@ -282,7 +282,7 @@ struct TTLWidgetView: View {
                 Text("—").font(.subheadline).foregroundStyle(.secondary)
             }
             if entry.isExpiringSoon {
-                Label("Expiring soon", systemImage: "exclamationmark.triangle.fill")
+                Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
@@ -295,8 +295,7 @@ struct TTLWidgetView: View {
     private func formatDuration(_ seconds: UInt64) -> String {
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
-        if days > 0 { return "\(days)d \(hours)h remaining" }
-        return "\(hours)h remaining"
+        return LocalizedStrings.durationFormat(days: days, hours: hours)
     }
 }
 

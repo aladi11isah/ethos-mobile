@@ -21,4 +21,29 @@
     <string name="widget_balance_label">Balance</string>
     <string name="widget_beneficiary_label">Beneficiary</string>
     <string name="widget_no_vaults">No vaults available</string>
+
+    <!-- Notification Channels -->
+    <string name="notification_channel_checkin_reminders">Check-in Reminders</string>
+    <string name="notification_channel_queued_requests">Queued Requests</string>
+    <string name="notification_channel_vault_expiry">Vault Expiry Alerts</string>
+
+    <!-- Queued Actions Notification -->
+    <string name="notification_queued_title">Request queued</string>
+    <string name="notification_queued_single">1 request will be submitted when back online</string>
+    <string name="notification_queued_plural">%d requests will be submitted when back online</string>
+
+    <!-- Vault Expired Notification -->
+    <string name="notification_vault_expired_title">Check-in Failed — Vault Expired</string>
+    <string name="notification_vault_expired_body_checkin">A queued check-in was discarded because this vault already expired while you were offline. The vault may have released funds to the beneficiary.</string>
+    <string name="notification_vault_expired_body_request">A queued request was discarded because this vault already expired while you were offline. The vault may have released funds to the beneficiary.</string>
+
+    <!-- Widget Strings -->
+    <string name="widget_ttl_unknown">Unknown</string>
+    <string name="widget_last_checkin_never">Never</string>
+    <string name="widget_last_checkin_just_now">Just now</string>
+    <string name="widget_last_checkin_minutes">%d minute%s ago</string>
+    <string name="widget_last_checkin_hours">%d hour%s ago</string>
+    <string name="widget_last_checkin_days">%d day%s ago</string>
+    <string name="widget_ttl_format_short">%dh</string>
+    <string name="widget_ttl_format_long">%dd %dh</string>
 </resources>
