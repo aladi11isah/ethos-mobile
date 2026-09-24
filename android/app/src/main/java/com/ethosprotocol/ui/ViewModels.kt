@@ -3,6 +3,8 @@ package com.ethosprotocol.ui
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,6 +48,7 @@ import javax.inject.Inject
 
 // --- Auth ViewModel ---
 
+@Immutable
 data class AuthUiState(
     val isAuthenticated: Boolean = false,
     val isLocked: Boolean = false,
@@ -253,6 +256,7 @@ class AuthViewModel @Inject constructor(
 
 // --- Sessions ViewModel (#208) ---
 
+@Immutable
 data class SessionsUiState(
     val sessions: List<Session> = emptyList(),
     val isLoading: Boolean = false,
@@ -297,6 +301,7 @@ class SessionsViewModel @Inject constructor(
 
 // --- TwoFactor ViewModel ---
 
+@Immutable
 data class TwoFactorUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -556,6 +561,7 @@ class TwoFactorViewModel @Inject constructor(
 
 // --- Vault ViewModel ---
 
+@Immutable
 data class VaultUiState(
     val vaults: List<Vault> = emptyList(),
     val isLoading: Boolean = false,
@@ -731,8 +737,12 @@ class VaultViewModel @Inject constructor(
     // Shared merge point for both a poll response (refreshSingle) and a `vault_updated`
     // push (subscribeToEvents) — see the "Reconciling a poll/push disagreement" rule in
     // api-contract.md (#223): whichever is received last always overwrites in place.
+    // Only updates if the vault is actually different to minimize Compose recomposition churn.
     private fun updateVaultInPlace(vault: Vault) {
-        _state.update { state -> state.copy(vaults = state.vaults.map { if (it.id == vault.id) vault else it }) }
+        _state.update { state ->
+            val updated = state.vaults.map { if (it.id == vault.id) vault else it }
+            if (updated === state.vaults) state else state.copy(vaults = updated)
+        }
     }
 
     /// Update the beneficiary for a vault (owner-only). On success the vault list is
@@ -794,6 +804,7 @@ class VaultViewModel @Inject constructor(
 
 // --- Acceptance ViewModel ---
 
+@Immutable
 data class AcceptanceUiState(
     val isLoading: Boolean = false,
     val isAccepted: Boolean = false,
@@ -821,6 +832,7 @@ class AcceptanceViewModel @Inject constructor(
 
 // --- Deposit ViewModel ---
 
+@Immutable
 data class DepositUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
@@ -870,6 +882,7 @@ class DepositViewModel @Inject constructor(
 
 // --- Withdraw ViewModel ---
 
+@Immutable
 data class WithdrawUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
