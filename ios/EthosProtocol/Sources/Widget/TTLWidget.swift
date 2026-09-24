@@ -12,6 +12,25 @@ import AppIntents
 import EthosProtocol
 #endif
 
+// MARK: - Quick Check-In Intent (#372)
+
+struct QuickCheckInIntent: AppIntent {
+    static let title: LocalizedStringResource = "Quick Check-In"
+    static let description = IntentDescription("Quickly check in a vault from the lock screen without opening the app.")
+
+    @Parameter(title: "Vault ID") var vaultID: String
+
+    func perform() async throws -> some IntentResult {
+        // Perform the check-in via the API
+        do {
+            try await APIClient.shared.checkIn(vaultID: vaultID, idempotencyKey: nil)
+            return .result(value: vaultID)
+        } catch {
+            throw error
+        }
+    }
+}
+
 // MARK: - Vault Selection Intent (#245 / #246)
 //
 // Each widget instance stores its own VaultSelectionIntent automatically via
@@ -187,27 +206,41 @@ struct TTLWidgetView: View {
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
     }
 
-    // MARK: .systemMedium — TTL + balance
+    // MARK: .systemMedium — TTL + balance + quick check-in
     private var mediumView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Ethos-Protocol", systemImage: "lock.shield.fill")
-                .font(.caption2.bold())
-                .foregroundStyle(.blue)
-            Text(entry.vaultName)
-                .font(.headline)
-                .lineLimit(1)
-            if let ttl = entry.ttlRemaining {
-                Text(formatDuration(ttl))
-                    .font(.subheadline)
-                    .foregroundStyle(entry.isExpiringSoon ? .orange : .secondary)
-            } else {
-                Text("—").font(.subheadline).foregroundStyle(.secondary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Ethos-Protocol", systemImage: "lock.shield.fill")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.blue)
+                    Text(entry.vaultName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if let ttl = entry.ttlRemaining {
+                        Text(formatDuration(ttl))
+                            .font(.subheadline)
+                            .foregroundStyle(entry.isExpiringSoon ? .orange : .secondary)
+                    } else {
+                        Text("—").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Label(entry.balance, systemImage: "dollarsign.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Button(intent: QuickCheckInIntent(vaultID: entry.vaultID)) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 32))
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
             }
-            HStack {
-                Label(entry.balance, systemImage: "dollarsign.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+
             if entry.isExpiringSoon {
                 Label("Expiring soon", systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
@@ -219,16 +252,31 @@ struct TTLWidgetView: View {
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
     }
 
-    // MARK: .systemLarge — TTL + balance + beneficiary
+    // MARK: .systemLarge — TTL + balance + beneficiary + quick check-in
     private var largeView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Ethos-Protocol", systemImage: "lock.shield.fill")
-                .font(.caption2.bold())
-                .foregroundStyle(.blue)
-            Text(entry.vaultName)
-                .font(.title3.bold())
-                .lineLimit(1)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Ethos-Protocol", systemImage: "lock.shield.fill")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.blue)
+                    Text(entry.vaultName)
+                        .font(.title3.bold())
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Button(intent: QuickCheckInIntent(vaultID: entry.vaultID)) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 36))
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+            }
+
             Divider()
+
             if let ttl = entry.ttlRemaining {
                 LabeledContent("TTL") {
                     Text(formatDuration(ttl))
@@ -265,7 +313,7 @@ struct TTLWidgetView: View {
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
     }
 
-    // MARK: .accessoryRectangular / .accessoryCircular — compact lock-screen view
+    // MARK: .accessoryRectangular / .accessoryCircular — compact lock-screen view with quick action
     private var compactView: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label("Ethos-Protocol", systemImage: "lock.shield.fill")
@@ -281,15 +329,18 @@ struct TTLWidgetView: View {
             } else {
                 Text("—").font(.subheadline).foregroundStyle(.secondary)
             }
-            if entry.isExpiringSoon {
-                Label("Expiring soon", systemImage: "exclamationmark.triangle.fill")
+
+            // Quick action button for lock screen widgets
+            Button(intent: QuickCheckInIntent(vaultID: entry.vaultID)) {
+                Label("Check In", systemImage: "checkmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(.orange)
             }
+            .buttonStyle(.bordered)
+            .tint(.blue)
+            .padding(.top, 4)
         }
         .padding()
         .containerBackground(.regularMaterial, for: .widget)
-        .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
     }
 
     private func formatDuration(_ seconds: UInt64) -> String {
