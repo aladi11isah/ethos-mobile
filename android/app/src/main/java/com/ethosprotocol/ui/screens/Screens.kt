@@ -30,6 +30,7 @@ import com.ethosprotocol.models.StellarAddress
 import com.ethosprotocol.services.BiometricHelper
 import com.ethosprotocol.services.UsernameValidator
 import com.ethosprotocol.services.VaultDeepLinkAction
+import com.ethosprotocol.services.AccessibilityService
 import com.ethosprotocol.ui.AcceptanceViewModel
 import com.ethosprotocol.ui.AuthUiState
 import com.ethosprotocol.ui.AuthViewModel
@@ -37,6 +38,24 @@ import com.ethosprotocol.ui.NotificationDebugViewModel
 import com.ethosprotocol.ui.VaultViewModel
 import com.ethosprotocol.ui.TwoFactorViewModel
 import com.ethosprotocol.services.NotificationDeliveryLog
+
+// MARK: - Accessibility Helpers
+
+/**
+ * Renders a CircularProgressIndicator that respects the user's reduce-motion accessibility setting.
+ * When reduce motion is enabled, shows an empty Box instead of the animated spinner.
+ */
+@Composable
+private fun AccessibleCircularProgressIndicator(modifier: Modifier = Modifier, strokeWidth: Dp = 4.dp) {
+    val context = LocalContext.current
+    val shouldReduceMotion = AccessibilityService.isReduceMotionEnabled(context)
+
+    if (shouldReduceMotion) {
+        Box(modifier = modifier)
+    } else {
+        CircularProgressIndicator(modifier = modifier, strokeWidth = strokeWidth)
+    }
+}
 
 // MARK: - Auth Screen
 
@@ -106,7 +125,7 @@ fun AuthScreenContent(
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading && cooldownRemainingSeconds == 0
         ) {
-            if (isLoading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            if (isLoading) AccessibleAccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             else { Icon(Icons.Default.Key, null); Spacer(Modifier.width(8.dp)); Text("Sign in with Passkey") }
         }
         Spacer(Modifier.height(8.dp))
@@ -279,7 +298,7 @@ fun VaultListScreen(
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
                 state.isLoading && state.vaults.isEmpty() ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    AccessibleCircularProgressIndicator(Modifier.align(Alignment.Center))
                 state.vaults.isEmpty() ->
                     Text("No vaults yet. Tap + to create one.",
                         Modifier.align(Alignment.Center),
@@ -313,7 +332,7 @@ fun VaultListScreen(
                             if (state.hasMore) item {
                                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                     if (state.isLoadingMore) {
-                                        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                                        AccessibleCircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
                                     } else {
                                         OutlinedButton(onClick = { vm.loadMore() }) { Text("Load more") }
                                     }
@@ -597,7 +616,7 @@ fun BeneficiaryAcceptanceScreenContent(
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         ) {
-            if (isLoading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            if (isLoading) AccessibleAccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             else Text("Accept")
         }
         Spacer(Modifier.height(8.dp))
@@ -678,7 +697,7 @@ fun ManageBeneficiaryScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoading
             ) {
-                if (state.isLoading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                if (state.isLoading) AccessibleAccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Text("Confirm Change")
             }
             Spacer(Modifier.height(8.dp))
@@ -877,7 +896,7 @@ fun VaultDeepLinkScreenContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (isLoading) {
             Spacer(Modifier.height(16.dp))
-            CircularProgressIndicator(
+            AccessibleCircularProgressIndicator(
                 Modifier.align(Alignment.CenterHorizontally).testTag("loading")
             )
         }
@@ -1077,7 +1096,7 @@ fun DepositScreenContent(
                 enabled = isAmountValid && !isLoading
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    AccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Deposit")
                 }
@@ -1219,7 +1238,7 @@ fun WithdrawScreenContent(
                 enabled = isAmountValid && !isLoading
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    AccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Withdraw")
                 }
@@ -1332,7 +1351,7 @@ fun TwoFactorSetupScreen(
                     TwoFactorMethod.email -> email.isNotBlank()
                 }
             ) {
-                if (state.isLoading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                if (state.isLoading) AccessibleAccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Text("Continue")
             }
         },
@@ -1486,7 +1505,7 @@ private fun TwoFactorVerifyScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = otp.length == 6 && !state.isLoading && !state.isOtpBlocked
         ) {
-            if (state.isLoading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            if (state.isLoading) AccessibleAccessibleCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             else Text("Verify")
         }
     }
@@ -1574,7 +1593,7 @@ fun VaultDetailScreen(
             Spacer(Modifier.height(8.dp))
 
             when {
-                state.isLoading -> CircularProgressIndicator()
+                state.isLoading -> AccessibleCircularProgressIndicator()
                 state.error != null && state.status == null -> {
                     Text(state.error!!, color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall)
