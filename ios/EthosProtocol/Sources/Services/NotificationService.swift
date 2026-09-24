@@ -128,12 +128,16 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     /// implying more precision than a fire-time estimate actually has.
     private func formatTTLRemaining(_ seconds: Int) -> String {
         let clamped = max(seconds, 0)
-        let days = clamped / 86_400
-        let hours = (clamped % 86_400) / 3_600
-        if days > 0 { return "\(days)d \(hours)h" }
-        let minutes = (clamped % 3_600) / 60
-        if hours > 0 { return "\(hours)h \(minutes)m" }
-        return "\(minutes)m"
+        let days = UInt64(clamped) / 86_400
+        let hours = (UInt64(clamped) % 86_400) / 3_600
+        if days > 0 {
+            return String(format: NSLocalizedString("%dd %dh", comment: "TTL format with days and hours"), days, hours)
+        }
+        let minutes = (UInt64(clamped) % 3_600) / 60
+        if hours > 0 {
+            return String(format: NSLocalizedString("%dh %dm", comment: "TTL format with hours and minutes"), hours, minutes)
+        }
+        return String(format: NSLocalizedString("%dm", comment: "TTL format with minutes only"), minutes)
     }
 
     // MARK: - Offline Check-In Queue Indicator

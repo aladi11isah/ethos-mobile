@@ -16,6 +16,7 @@ import com.ethosprotocol.api.ApiClient
 import com.ethosprotocol.api.ApiResult
 import com.ethosprotocol.models.VaultStatus
 import com.ethosprotocol.ui.MainActivity
+import com.ethosprotocol.utils.DateTimeFormatter
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Duration
@@ -246,10 +247,7 @@ class VaultWidgetUpdateWorker @AssistedInject constructor(
 
     private fun formatTtl(context: Context, seconds: Long?): String {
         if (seconds == null) return context.getString(R.string.widget_ttl_unknown)
-        val days = seconds / 86400
-        val hours = (seconds % 86400) / 3600
-        return if (days > 0) context.getString(R.string.widget_ttl_format_long, days, hours)
-        else context.getString(R.string.widget_ttl_format_short, hours)
+        return DateTimeFormatter.formatDurationInSeconds(seconds)
     }
 
     companion object {

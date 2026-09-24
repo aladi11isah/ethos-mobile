@@ -293,9 +293,7 @@ struct TTLWidgetView: View {
     }
 
     private func formatDuration(_ seconds: UInt64) -> String {
-        let days = seconds / 86_400
-        let hours = (seconds % 86_400) / 3_600
-        return LocalizedStrings.durationFormat(days: days, hours: hours)
+        DateTimeFormatter.shared.formatDurationInSeconds(seconds)
     }
 }
 

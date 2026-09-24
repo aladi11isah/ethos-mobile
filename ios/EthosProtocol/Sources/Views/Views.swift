@@ -767,17 +767,7 @@ struct VaultDetailView: View {
     }
 
     private func formatDuration(_ seconds: UInt64) -> String {
-        let days = seconds / 86_400
-        let hours = (seconds % 86_400) / 3_600
-        let minutes = (seconds % 3_600) / 60
-        let secs = seconds % 60
-        if days > 0 { return "\(days)d \(hours)h" }
-        if hours > 0 { return "\(hours)h \(minutes)m" }
-        // Below an hour, show seconds so the per-second local tick (#221) is
-        // actually visible rather than appearing frozen at "0h". Cast to Int:
-        // %d expects a 32-bit-sized argument, and these UInt64 values are
-        // always small (< 3600) so the cast is lossless.
-        return String(format: "%d:%02d", Int(minutes), Int(secs))
+        DateTimeFormatter.shared.formatDurationInSeconds(seconds)
     }
 }
 
