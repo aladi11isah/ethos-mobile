@@ -334,6 +334,7 @@ struct VaultListView: View {
     @State private var showCreate = false
     @State private var showDeepLinkSheet = false
     @State private var showSettings = false
+    @State private var showFilterMenu = false
     // #118: Non-blocking jailbreak/root warning. Dismissed by the user; does not
     // block access to the app, consistent with the "secure digital inheritance" posture.
     @State private var showIntegrityWarning = IntegrityService.shared.isJailbroken
@@ -350,6 +351,66 @@ struct VaultListView: View {
                 } else if vaultStore.vaults.isEmpty {
                     ContentUnavailableView("No Vaults", systemImage: "lock.open", description: Text("Create your first vault to get started."))
                 } else {
+                    VStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("Search vaults", text: $vaultStore.searchText)
+                                .textFieldStyle(.roundedBorder)
+                            if !vaultStore.searchText.isEmpty {
+                                Button(action: { vaultStore.searchText = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+
+                        HStack(spacing: 12) {
+                            Menu {
+                                Picker("Status", selection: $vaultStore.statusFilter) {
+                                    ForEach(VaultStatusFilter.allCases, id: \.self) { filter in
+                                        Text(filter.rawValue).tag(filter)
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "line.3.horizontal.decrease.circle")
+                                    Text(vaultStore.statusFilter.rawValue)
+                                        .font(.caption2)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(6)
+                            }
+
+                            Menu {
+                                Picker("Sort", selection: $vaultStore.sortOption) {
+                                    ForEach(VaultSortOption.allCases, id: \.self) { option in
+                                        Text(option.rawValue).tag(option)
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.up.arrow.down")
+                                    Text(vaultStore.sortOption.rawValue)
+                                        .font(.caption2)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(6)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                    }
+                    .padding(.vertical, 8)
+                    .background(Color(.systemBackground))
+
                     List {
                         if let lastSync = vaultStore.lastSyncTime {
                             HStack {
@@ -363,14 +424,19 @@ struct VaultListView: View {
                             .padding(.horizontal)
                             .padding(.vertical, 8)
                         }
-                        ForEach(vaultStore.vaults) { vault in
-                            NavigationLink(destination: VaultDetailView(vault: vault)) {
-                                VaultRowView(vault: vault)
+                        if vaultStore.filteredAndSortedVaults.isEmpty && !vaultStore.searchText.isEmpty {
+                            ContentUnavailableView("No Results", systemImage: "magnifyingglass", description: Text("No vaults match your search."))
+                                .listRowSeparator(.hidden)
+                        } else {
+                            ForEach(vaultStore.filteredAndSortedVaults) { vault in
+                                NavigationLink(destination: VaultDetailView(vault: vault)) {
+                                    VaultRowView(vault: vault)
+                                }
                             }
-                        }
-                        if vaultStore.hasMorePages {
-                            LoadMoreRow(isLoading: vaultStore.isLoadingMore) {
-                                Task { await vaultStore.loadMore() }
+                            if vaultStore.hasMorePages && vaultStore.filteredAndSortedVaults.count == vaultStore.vaults.count {
+                                LoadMoreRow(isLoading: vaultStore.isLoadingMore) {
+                                    Task { await vaultStore.loadMore() }
+                                }
                             }
                         }
                     }
