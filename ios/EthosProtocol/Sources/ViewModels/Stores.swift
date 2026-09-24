@@ -323,8 +323,16 @@ final class VaultStore: ObservableObject {
         do {
             let page = try await APIClient.shared.listVaults()
             ifNotCancelled {
-                vaults = page.vaults
+                let (dedupedVaults, duplicateCount) = deduplicateVaults(page.vaults)
+                vaults = dedupedVaults
                 nextCursor = page.nextCursor
+                if duplicateCount > 0 {
+                    let message = duplicateCount == 1
+                        ? "Removed 1 duplicate vault from your list"
+                        : "Removed \(duplicateCount) duplicate vaults from your list"
+                    self.error = ErrorPresentation(message: message)
+                    DuplicateVaultLogger.shared.logDeduplication(count: duplicateCount)
+                }
                 scheduleReminders()
             }
         } catch APIError.networkUnavailable {
@@ -367,7 +375,15 @@ final class VaultStore: ObservableObject {
                 if Task.isCancelled { return }
             } while cursor != nil
             ifNotCancelled {
-                vaults = accumulated
+                let (dedupedVaults, duplicateCount) = deduplicateVaults(accumulated)
+                vaults = dedupedVaults
+                if duplicateCount > 0 {
+                    let message = duplicateCount == 1
+                        ? "Removed 1 duplicate vault from your list"
+                        : "Removed \(duplicateCount) duplicate vaults from your list"
+                    self.error = ErrorPresentation(message: message)
+                    DuplicateVaultLogger.shared.logDeduplication(count: duplicateCount)
+                }
                 scheduleReminders()
             }
         } catch APIError.networkUnavailable {
@@ -504,6 +520,23 @@ final class VaultStore: ObservableObject {
         eventSocket?.stop()
         eventSocket = nil
         socketConnectionState = .disconnected
+    }
+
+    private func deduplicateVaults(_ vaults: [Vault]) -> (deduplicated: [Vault], duplicateCount: Int) {
+        var seenIDs = Set<String>()
+        var deduplicated: [Vault] = []
+        var duplicateCount = 0
+
+        for vault in vaults {
+            if seenIDs.contains(vault.id) {
+                duplicateCount += 1
+            } else {
+                seenIDs.insert(vault.id)
+                deduplicated.append(vault)
+            }
+        }
+
+        return (deduplicated, duplicateCount)
     }
 
     private func scheduleReminders() {
