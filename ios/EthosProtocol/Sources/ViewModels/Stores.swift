@@ -508,6 +508,8 @@ final class VaultStore: ObservableObject {
             NotificationService.shared.scheduleCheckInReminder(
                 vaultID: vault.id, vaultName: vault.id, ttlRemaining: ttl,
                 checkInInterval: vault.checkInInterval)
+            VaultExpiryNotificationService.shared.scheduleVaultExpiryNotifications(
+                vaultID: vault.id, vaultName: vault.id, ttlRemaining: ttl)
         }
     }
 }

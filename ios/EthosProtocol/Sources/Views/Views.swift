@@ -534,6 +534,7 @@ struct VaultDetailView: View {
     @State private var showDeposit = false
     @State private var showWithdraw = false
     @State private var showManageBeneficiary = false
+    @State private var showNotificationPreferences = false
     /// Server-anchored TTL baseline, reconciled on every poll and `vault_updated`
     /// push (#221, #223); the server value always wins on conflict.
     @State private var ttlCountdown: TTLCountdown? = nil
@@ -621,6 +622,12 @@ struct VaultDetailView: View {
                     Label("Manage Beneficiary", systemImage: "person.2.fill")
                 }
             }
+
+            Section {
+                Button(action: { showNotificationPreferences = true }) {
+                    Label("Expiry Notifications", systemImage: "bell.fill")
+                }
+            }
         }
         .navigationTitle("Vault")
         .navigationBarTitleDisplayMode(.inline)
@@ -679,6 +686,9 @@ struct VaultDetailView: View {
         }
         .sheet(isPresented: $showManageBeneficiary) {
             NavigationStack { ManageBeneficiaryView(vault: vault) }
+        }
+        .sheet(isPresented: $showNotificationPreferences) {
+            NavigationStack { VaultNotificationPreferencesView(vaultID: vault.id) }
         }
     }
 
