@@ -14,6 +14,10 @@ struct EthosProtocolApp: App {
         CheckInSyncTask.shared.registerBackgroundTask()
         ICloudSyncService.shared.restoreFromICloud()
 
+        if #available(iOS 16.1, *) {
+            AppShortcutsProvider.registerShortcuts()
+        }
+
         NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: NSUbiquitousKeyValueStore.default,
