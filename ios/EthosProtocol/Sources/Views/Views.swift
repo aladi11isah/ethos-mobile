@@ -85,8 +85,10 @@ private struct LockScreenView: View {
         Task {
             do {
                 try await BiometricService.shared.authenticate(reason: "Unlock Ethos-Protocol")
+                HapticFeedbackService.shared.success()
                 authStore.isLocked = false
             } catch {
+                HapticFeedbackService.shared.error()
                 self.error = error.localizedDescription
             }
             isUnlocking = false
@@ -758,9 +760,15 @@ struct VaultDetailView: View {
         Task {
             do {
                 try await BiometricService.shared.authenticate(reason: "Confirm vault check-in")
-                if !Task.isCancelled { await vaultStore.checkIn(vault: vault) }
+                if !Task.isCancelled {
+                    await vaultStore.checkIn(vault: vault)
+                    HapticFeedbackService.shared.success()
+                }
             } catch {
-                ifNotCancelled { biometricError = error.localizedDescription }
+                ifNotCancelled {
+                    HapticFeedbackService.shared.error()
+                    biometricError = error.localizedDescription
+                }
             }
             ifNotCancelled { isCheckingIn = false }
         }

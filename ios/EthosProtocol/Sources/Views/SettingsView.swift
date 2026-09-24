@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @State private var iCloudSyncEnabled = ICloudSyncService.shared.isSyncEnabled
     @State private var reLockTimeout = ReLockTimeoutOption.current
+    @State private var hapticFeedbackEnabled = HapticFeedbackService.isEnabled
 
     var body: some View {
         Form {
@@ -32,6 +33,19 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             } header: {
                 Text("Privacy")
+            }
+
+            Section {
+                Toggle("Haptic Feedback", isOn: $hapticFeedbackEnabled)
+                    .onChange(of: hapticFeedbackEnabled) { _, newValue in
+                        HapticFeedbackService.isEnabled = newValue
+                        HapticFeedbackService.shared.lightImpact()
+                    }
+                Text("Enable haptic feedback for successful actions, errors, and biometric unlock.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Feedback")
             }
 
             #if DEBUG
