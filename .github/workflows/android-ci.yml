@@ -131,6 +131,10 @@ jobs:
           ETHOS_CERT_PINS: ${{ secrets.ETHOS_CERT_PINS }}
         run: ./gradlew assembleRelease
 
+      - name: Measure APK size
+        run: |
+          python3 ../.github/scripts/track_build_size.py android
+
       # task #173: A release build must never ship placeholder certificate pins — the
       # failure mode is silent until every user hits a connection failure in production.
       # This inspects the pin value actually compiled into the release BuildConfig (falling
