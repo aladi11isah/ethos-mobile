@@ -2,12 +2,21 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var authStore: AuthStore
+    @StateObject private var timeoutIndicator = BiometricTimeoutIndicatorService.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
             if authStore.isAuthenticated {
-                VaultListView()
+                ZStack(alignment: .top) {
+                    VaultListView()
+
+                    // Biometric timeout indicator
+                    if timeoutIndicator.isActive && timeoutIndicator.totalTimeoutSeconds < Int.max {
+                        BiometricTimeoutIndicatorView(indicator: timeoutIndicator)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
             } else {
                 AuthView()
             }
@@ -86,11 +95,65 @@ private struct LockScreenView: View {
         Task {
             do {
                 try await BiometricService.shared.authenticate(reason: "Unlock Ethos-Protocol")
+                HapticFeedbackService.shared.success()
                 authStore.isLocked = false
             } catch {
+                HapticFeedbackService.shared.error()
                 self.error = error.localizedDescription
             }
             isUnlocking = false
+        }
+    }
+}
+
+// MARK: - Biometric Timeout Indicator
+
+struct BiometricTimeoutIndicatorView: View {
+    let indicator: BiometricTimeoutIndicatorService
+
+    var body: some View {
+        VStack {
+            HStack {
+                Image(systemName: "clock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+
+                Text("Session expires in \(formatTime(indicator.remainingSeconds))")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Background
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(.systemGray5))
+
+                    // Progress fill
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.orange)
+                        .frame(width: geometry.size.width * indicator.progressFraction)
+                }
+            }
+            .frame(height: 4)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+        .background(Color(.systemBackground))
+        .border(Color(.systemGray4), width: 0.5)
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let secs = seconds % 60
+        if minutes > 0 {
+            return "\(minutes)m \(secs)s"
+        } else {
+            return "\(secs)s"
         }
     }
 }
@@ -533,6 +596,7 @@ struct VaultDetailView: View {
     @State private var showDeposit = false
     @State private var showWithdraw = false
     @State private var showManageBeneficiary = false
+    @State private var showNotificationPreferences = false
     /// Server-anchored TTL baseline, reconciled on every poll and `vault_updated`
     /// push (#221, #223); the server value always wins on conflict.
     @State private var ttlCountdown: TTLCountdown? = nil
@@ -621,6 +685,12 @@ struct VaultDetailView: View {
                     Label("Manage Beneficiary", systemImage: "person.2.fill")
                 }
             }
+
+            Section {
+                Button(action: { showNotificationPreferences = true }) {
+                    Label("Expiry Notifications", systemImage: "bell.fill")
+                }
+            }
         }
         .navigationTitle("Vault")
         .navigationBarTitleDisplayMode(.inline)
@@ -679,6 +749,9 @@ struct VaultDetailView: View {
         }
         .sheet(isPresented: $showManageBeneficiary) {
             NavigationStack { ManageBeneficiaryView(vault: vault) }
+        }
+        .sheet(isPresented: $showNotificationPreferences) {
+            NavigationStack { VaultNotificationPreferencesView(vaultID: vault.id) }
         }
     }
 
@@ -760,9 +833,15 @@ struct VaultDetailView: View {
         Task {
             do {
                 try await BiometricService.shared.authenticate(reason: "Confirm vault check-in")
-                if !Task.isCancelled { await vaultStore.checkIn(vault: vault) }
+                if !Task.isCancelled {
+                    await vaultStore.checkIn(vault: vault)
+                    HapticFeedbackService.shared.success()
+                }
             } catch {
-                ifNotCancelled { biometricError = error.localizedDescription }
+                ifNotCancelled {
+                    HapticFeedbackService.shared.error()
+                    biometricError = error.localizedDescription
+                }
             }
             ifNotCancelled { isCheckingIn = false }
         }

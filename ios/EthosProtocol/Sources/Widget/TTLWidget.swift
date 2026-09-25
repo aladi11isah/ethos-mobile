@@ -12,6 +12,25 @@ import AppIntents
 import EthosProtocol
 #endif
 
+// MARK: - Quick Check-In Intent (#372)
+
+struct QuickCheckInIntent: AppIntent {
+    static let title: LocalizedStringResource = "Quick Check-In"
+    static let description = IntentDescription("Quickly check in a vault from the lock screen without opening the app.")
+
+    @Parameter(title: "Vault ID") var vaultID: String
+
+    func perform() async throws -> some IntentResult {
+        // Perform the check-in via the API
+        do {
+            try await APIClient.shared.checkIn(vaultID: vaultID, idempotencyKey: nil)
+            return .result(value: vaultID)
+        } catch {
+            throw error
+        }
+    }
+}
+
 // MARK: - Vault Selection Intent (#245 / #246)
 //
 // Each widget instance stores its own VaultSelectionIntent automatically via
@@ -197,7 +216,7 @@ struct TTLWidgetView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: .systemMedium — TTL + balance
+    // MARK: .systemMedium — TTL + balance + quick check-in
     private var mediumView: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
@@ -227,6 +246,7 @@ struct TTLWidgetView: View {
                     .accessibilityLabel("Balance")
                     .accessibilityValue(entry.balance)
             }
+
             if entry.isExpiringSoon {
                 Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
@@ -241,7 +261,7 @@ struct TTLWidgetView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: .systemLarge — TTL + balance + beneficiary
+    // MARK: .systemLarge — TTL + balance + beneficiary + quick check-in
     private var largeView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
@@ -307,7 +327,7 @@ struct TTLWidgetView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: .accessoryRectangular / .accessoryCircular — compact lock-screen view
+    // MARK: .accessoryRectangular / .accessoryCircular — compact lock-screen view with quick action
     private var compactView: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
@@ -337,6 +357,9 @@ struct TTLWidgetView: View {
                     .accessibilityLabel("Warning")
                     .accessibilityValue("Vault expiring soon")
             }
+            .buttonStyle(.bordered)
+            .tint(.blue)
+            .padding(.top, 4)
         }
         .padding()
         .containerBackground(.regularMaterial, for: .widget)
