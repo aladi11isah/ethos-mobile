@@ -145,6 +145,35 @@ cd android
 ```
 Covers: ViewModel state transitions, model logic, Compose UI smoke tests.
 
+#### RTL Layout Testing (Issue #314)
+
+The app supports Right-to-Left (RTL) locales (Arabic, Hebrew, etc.) via automatic layout mirroring. To test RTL functionality:
+
+**Enable RTL layout direction on a device/emulator:**
+```bash
+adb shell settings put global debug.force_rtl_layout 1
+```
+
+**Run the app and verify:**
+- All screens display with proper mirroring (buttons, text, icons)
+- No text clipping or overlap at edges
+- Numerical values format correctly (see Issue #313 for locale-aware formatting)
+
+**Disable RTL when done:**
+```bash
+adb shell settings put global debug.force_rtl_layout 0
+```
+
+See [docs/rtl-layout-testing.md](docs/rtl-layout-testing.md) for comprehensive RTL testing procedures on both platforms.
+
+### iOS RTL Testing
+
+Enable RTL pseudo-language in Xcode to test Right-to-Left layout support:
+
+1. Edit Scheme → Run → Options
+2. Set "App Language" to an RTL pseudo-language (e.g., `ar-XB` for Arabic-Pseudo)
+3. Run the app and verify all screens mirror correctly
+
 <<<<<<< HEAD
 ### Dependency vulnerability scanning
 The repo runs a dependency scan for both platforms with the same trigger model:
