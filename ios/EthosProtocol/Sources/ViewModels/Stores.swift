@@ -19,6 +19,7 @@ final class AuthStore: ObservableObject {
     @Published var isLoading = false
     @Published var error: ErrorPresentation?
     @Published var isLocked = false
+    @Published var showPINSetup = false
 
     // Injected for testing; defaults to the real APIClient call. See
     // BackgroundRefreshService.vaultListProvider for the same pattern.
@@ -58,6 +59,7 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
+                BiometricTimeoutIndicatorService.shared.startTimeout()
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
@@ -80,6 +82,7 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
+                BiometricTimeoutIndicatorService.shared.startTimeout()
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
@@ -101,6 +104,7 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
+                BiometricTimeoutIndicatorService.shared.startTimeout()
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
@@ -112,6 +116,7 @@ final class AuthStore: ObservableObject {
     func signOut() async {
         refreshTask?.cancel()
         refreshTask = nil
+        BiometricTimeoutIndicatorService.shared.stopTimeout()
         // Unregister before dropping the auth token: the request needs the
         // still-valid Bearer token to authenticate, or the server rejects it.
         if let pushToken = KeychainService.shared.loadPushToken() {
@@ -140,10 +145,14 @@ final class AuthStore: ObservableObject {
         switch phase {
         case .background:
             backgroundedAt = now
+            BiometricTimeoutIndicatorService.shared.stopTimeout()
         case .active:
             if let backgroundedAt, isAuthenticated,
                now.timeIntervalSince(backgroundedAt) >= ReLockTimeoutOption.current.seconds {
                 isLocked = true
+                BiometricTimeoutIndicatorService.shared.stopTimeout()
+            } else if isAuthenticated && !isLocked {
+                BiometricTimeoutIndicatorService.shared.startTimeout()
             }
             backgroundedAt = nil
         case .inactive:
@@ -368,9 +377,16 @@ final class VaultStore: ObservableObject {
         do {
             let page = try await APIClient.shared.listVaults()
             ifNotCancelled {
-                vaults = page.vaults
+                let (dedupedVaults, duplicateCount) = deduplicateVaults(page.vaults)
+                vaults = dedupedVaults
                 nextCursor = page.nextCursor
-                lastSyncTime = Date()
+                if duplicateCount > 0 {
+                    let message = duplicateCount == 1
+                        ? "Removed 1 duplicate vault from your list"
+                        : "Removed \(duplicateCount) duplicate vaults from your list"
+                    self.error = ErrorPresentation(message: message)
+                    DuplicateVaultLogger.shared.logDeduplication(count: duplicateCount)
+                }
                 scheduleReminders()
             }
         } catch APIError.networkUnavailable {
@@ -413,8 +429,15 @@ final class VaultStore: ObservableObject {
                 if Task.isCancelled { return }
             } while cursor != nil
             ifNotCancelled {
-                vaults = accumulated
-                lastSyncTime = Date()
+                let (dedupedVaults, duplicateCount) = deduplicateVaults(accumulated)
+                vaults = dedupedVaults
+                if duplicateCount > 0 {
+                    let message = duplicateCount == 1
+                        ? "Removed 1 duplicate vault from your list"
+                        : "Removed \(duplicateCount) duplicate vaults from your list"
+                    self.error = ErrorPresentation(message: message)
+                    DuplicateVaultLogger.shared.logDeduplication(count: duplicateCount)
+                }
                 scheduleReminders()
             }
         } catch APIError.networkUnavailable {
@@ -553,12 +576,31 @@ final class VaultStore: ObservableObject {
         socketConnectionState = .disconnected
     }
 
+    private func deduplicateVaults(_ vaults: [Vault]) -> (deduplicated: [Vault], duplicateCount: Int) {
+        var seenIDs = Set<String>()
+        var deduplicated: [Vault] = []
+        var duplicateCount = 0
+
+        for vault in vaults {
+            if seenIDs.contains(vault.id) {
+                duplicateCount += 1
+            } else {
+                seenIDs.insert(vault.id)
+                deduplicated.append(vault)
+            }
+        }
+
+        return (deduplicated, duplicateCount)
+    }
+
     private func scheduleReminders() {
         for vault in vaults {
             guard vault.status == .active, let ttl = vault.ttlRemaining else { continue }
             NotificationService.shared.scheduleCheckInReminder(
                 vaultID: vault.id, vaultName: vault.id, ttlRemaining: ttl,
                 checkInInterval: vault.checkInInterval)
+            VaultExpiryNotificationService.shared.scheduleVaultExpiryNotifications(
+                vaultID: vault.id, vaultName: vault.id, ttlRemaining: ttl)
         }
     }
 }
