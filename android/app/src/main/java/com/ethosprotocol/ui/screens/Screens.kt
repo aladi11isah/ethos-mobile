@@ -1716,7 +1716,7 @@ fun NotificationDebugScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(event.vaultId.take(12) + "…", style = MaterialTheme.typography.bodySmall)
                             Text(
-                                java.text.DateFormat.getTimeInstance().format(java.util.Date(event.timestampMillis)),
+                                com.ethosprotocol.utils.DateTimeFormatter.formatTime(event.timestampMillis),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
