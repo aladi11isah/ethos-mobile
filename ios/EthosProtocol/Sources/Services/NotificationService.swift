@@ -88,8 +88,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         // balance or beneficiary; those aren't even available to this function).
         let primaryRemaining = max(Int(ttlRemaining) - primaryFireIn, 0)
         let primaryContent = UNMutableNotificationContent()
-        primaryContent.title = "Check-in Reminder"
-        primaryContent.body = "Vault \(truncatedVaultID(vaultID)) expires in \(formatTTLRemaining(primaryRemaining)). Tap to check in and keep it active."
+        primaryContent.title = LocalizedStrings.checkInReminderTitle
+        primaryContent.body = LocalizedStrings.checkInReminderBody(vaultID: truncatedVaultID(vaultID), timeRemaining: formatTTLRemaining(primaryRemaining))
         primaryContent.sound = .default
         primaryContent.userInfo = ["vault_id": vaultID]
         primaryContent.categoryIdentifier = "CHECK_IN"
@@ -103,8 +103,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         if hasSecondaryReminder && secondaryFireIn > primaryFireIn {
             let secondaryRemaining = max(Int(ttlRemaining) - secondaryFireIn, 0)
             let secondaryContent = UNMutableNotificationContent()
-            secondaryContent.title = "Check-in Urgent"
-            secondaryContent.body = "Vault \(truncatedVaultID(vaultID)) expires in \(formatTTLRemaining(secondaryRemaining)). Check in now to prevent loss of access."
+            secondaryContent.title = LocalizedStrings.checkInUrgentTitle
+            secondaryContent.body = LocalizedStrings.checkInUrgentBody(vaultID: truncatedVaultID(vaultID), timeRemaining: formatTTLRemaining(secondaryRemaining))
             secondaryContent.sound = .default
             secondaryContent.userInfo = ["vault_id": vaultID]
             secondaryContent.categoryIdentifier = "CHECK_IN"
@@ -128,12 +128,16 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     /// implying more precision than a fire-time estimate actually has.
     private func formatTTLRemaining(_ seconds: Int) -> String {
         let clamped = max(seconds, 0)
-        let days = clamped / 86_400
-        let hours = (clamped % 86_400) / 3_600
-        if days > 0 { return "\(days)d \(hours)h" }
-        let minutes = (clamped % 3_600) / 60
-        if hours > 0 { return "\(hours)h \(minutes)m" }
-        return "\(minutes)m"
+        let days = UInt64(clamped) / 86_400
+        let hours = (UInt64(clamped) % 86_400) / 3_600
+        if days > 0 {
+            return String(format: NSLocalizedString("%dd %dh", comment: "TTL format with days and hours"), days, hours)
+        }
+        let minutes = (UInt64(clamped) % 3_600) / 60
+        if hours > 0 {
+            return String(format: NSLocalizedString("%dh %dm", comment: "TTL format with hours and minutes"), hours, minutes)
+        }
+        return String(format: NSLocalizedString("%dm", comment: "TTL format with minutes only"), minutes)
     }
 
     // MARK: - Offline Check-In Queue Indicator
@@ -149,10 +153,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     func showQueuedCheckIn(count: Int) {
         let center = UNUserNotificationCenter.current()
         let content = UNMutableNotificationContent()
-        content.title = "Check-in queued"
-        content.body = count == 1
-            ? "1 check-in will be submitted when back online"
-            : "\(count) check-ins will be submitted when back online"
+        content.title = LocalizedStrings.queuedCheckInTitle
+        content.body = LocalizedStrings.queuedCheckInBody(count: count)
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: Self.queuedCheckInIdentifier, content: content, trigger: trigger)
@@ -171,8 +173,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         let identifier = "vault-expired-\(vaultId)"
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
         let content = UNMutableNotificationContent()
-        content.title = "Check-in Failed \u{2014} Vault Expired"
-        content.body = "A queued check-in was discarded because this vault already expired while you were offline. The vault may have released funds to the beneficiary."
+        content.title = LocalizedStrings.vaultExpiredTitle
+        content.body = LocalizedStrings.vaultExpiredBody
         content.sound = .default
         content.userInfo = ["vault_id": vaultId]
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -238,9 +240,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         center.removePendingNotificationRequests(withIdentifiers: ["ttl-warning-\(vaultID)"])
 
         let content = UNMutableNotificationContent()
-        content.title = "Vault Expiring Soon"
-        // #233: fires ~immediately, so ttlRemaining is still accurate at display time.
-        content.body = "Vault \(truncatedVaultID(vaultID)) expires in \(formatTTLRemaining(Int(ttlRemaining))). Open the app to check in and keep it active."
+        content.title = LocalizedStrings.ttlWarningTitle
+        content.body = LocalizedStrings.ttlWarningBody(vaultID: truncatedVaultID(vaultID), timeRemaining: formatTTLRemaining(Int(ttlRemaining)))
         content.sound = .default
         content.userInfo = ["vault_id": vaultID]
         content.categoryIdentifier = "CHECK_IN"
@@ -256,7 +257,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         // action fires — otherwise anyone with the phone in hand could trigger a check-in
         // (resetting the vault's TTL) straight from the lock screen banner, bypassing the
         // BiometricService confirmation that guards the equivalent in-app action.
-        let checkInAction = UNNotificationAction(identifier: "CHECK_IN_ACTION", title: "Check In", options: [.foreground, .authenticationRequired])
+        let checkInAction = UNNotificationAction(identifier: "CHECK_IN_ACTION", title: LocalizedStrings.checkInAction, options: [.foreground, .authenticationRequired])
         let category = UNNotificationCategory(identifier: "CHECK_IN", actions: [checkInAction],
                                                intentIdentifiers: [], options: [])
         UNUserNotificationCenter.current().setNotificationCategories([category])

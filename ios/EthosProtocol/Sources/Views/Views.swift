@@ -3,12 +3,21 @@ import UIKit
 
 struct RootView: View {
     @EnvironmentObject var authStore: AuthStore
+    @StateObject private var timeoutIndicator = BiometricTimeoutIndicatorService.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
             if authStore.isAuthenticated {
-                VaultListView()
+                ZStack(alignment: .top) {
+                    VaultListView()
+
+                    // Biometric timeout indicator
+                    if timeoutIndicator.isActive && timeoutIndicator.totalTimeoutSeconds < Int.max {
+                        BiometricTimeoutIndicatorView(indicator: timeoutIndicator)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
             } else {
                 AuthView()
             }
@@ -51,6 +60,7 @@ private struct PrivacyOverlayView: View {
         }
         .ignoresSafeArea()
         .transition(.opacity)
+        .respectsReduceMotion()
     }
 }
 
@@ -143,8 +153,10 @@ private struct LockScreenView: View {
         Task {
             do {
                 try await BiometricService.shared.authenticate(reason: "Unlock Ethos-Protocol")
+                HapticFeedbackService.shared.success()
                 authStore.isLocked = false
             } catch {
+                HapticFeedbackService.shared.error()
                 self.error = error.localizedDescription
                 if PINAuthenticationService.shared.isPINSetup() {
                     showPINInput = true
@@ -165,6 +177,58 @@ private struct LockScreenView: View {
             pinError = error.localizedDescription
         }
         isUnlocking = false
+    }
+}
+
+// MARK: - Biometric Timeout Indicator
+
+struct BiometricTimeoutIndicatorView: View {
+    let indicator: BiometricTimeoutIndicatorService
+
+    var body: some View {
+        VStack {
+            HStack {
+                Image(systemName: "clock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+
+                Text("Session expires in \(formatTime(indicator.remainingSeconds))")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Background
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(.systemGray5))
+
+                    // Progress fill
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.orange)
+                        .frame(width: geometry.size.width * indicator.progressFraction)
+                }
+            }
+            .frame(height: 4)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+        .background(Color(.systemBackground))
+        .border(Color(.systemGray4), width: 0.5)
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let secs = seconds % 60
+        if minutes > 0 {
+            return "\(minutes)m \(secs)s"
+        } else {
+            return "\(secs)s"
+        }
     }
 }
 
@@ -290,7 +354,7 @@ struct AuthView: View {
                     .font(.footnote)
             }
             .padding(32)
-            .overlay { if authStore.isLoading { ProgressView() } }
+            .overlay { if authStore.isLoading { ProgressView().respectsReduceMotion() } }
             .sheet(isPresented: $showRegister) { RegisterView() }
             .sheet(isPresented: $showRecovery) { RecoverAccessView() }
         }
@@ -420,7 +484,7 @@ struct VaultListView: View {
                         .padding()
                 }
                 if vaultStore.isLoading && vaultStore.vaults.isEmpty {
-                    ProgressView("Loading vaults…")
+                    ProgressView("Loading vaults…").respectsReduceMotion()
                 } else if vaultStore.vaults.isEmpty {
                     ContentUnavailableView("No Vaults", systemImage: "lock.open", description: Text("Create your first vault to get started."))
                 } else {
@@ -528,7 +592,7 @@ struct LoadMoreRow: View {
         HStack {
             Spacer()
             if isLoading {
-                ProgressView()
+                ProgressView().respectsReduceMotion()
             } else {
                 Button("Load More", action: action)
                     .font(.subheadline)
@@ -658,6 +722,7 @@ struct VaultDetailView: View {
     @State private var showDeposit = false
     @State private var showWithdraw = false
     @State private var showManageBeneficiary = false
+    @State private var showNotificationPreferences = false
     /// Server-anchored TTL baseline, reconciled on every poll and `vault_updated`
     /// push (#221, #223); the server value always wins on conflict.
     @State private var ttlCountdown: TTLCountdown? = nil
@@ -711,6 +776,7 @@ struct VaultDetailView: View {
                     }
                 } else {
                     ProgressView()
+                        .respectsReduceMotion()
                         .task { await load2FAStatus() }
                 }
             }
@@ -743,6 +809,12 @@ struct VaultDetailView: View {
             Section {
                 Button(action: { showManageBeneficiary = true }) {
                     Label("Manage Beneficiary", systemImage: "person.2.fill")
+                }
+            }
+
+            Section {
+                Button(action: { showNotificationPreferences = true }) {
+                    Label("Expiry Notifications", systemImage: "bell.fill")
                 }
             }
         }
@@ -803,6 +875,9 @@ struct VaultDetailView: View {
         }
         .sheet(isPresented: $showManageBeneficiary) {
             NavigationStack { ManageBeneficiaryView(vault: vault) }
+        }
+        .sheet(isPresented: $showNotificationPreferences) {
+            NavigationStack { VaultNotificationPreferencesView(vaultID: vault.id) }
         }
     }
 
@@ -884,26 +959,22 @@ struct VaultDetailView: View {
         Task {
             do {
                 try await BiometricService.shared.authenticate(reason: "Confirm vault check-in")
-                if !Task.isCancelled { await vaultStore.checkIn(vault: vault) }
+                if !Task.isCancelled {
+                    await vaultStore.checkIn(vault: vault)
+                    HapticFeedbackService.shared.success()
+                }
             } catch {
-                ifNotCancelled { biometricError = error.localizedDescription }
+                ifNotCancelled {
+                    HapticFeedbackService.shared.error()
+                    biometricError = error.localizedDescription
+                }
             }
             ifNotCancelled { isCheckingIn = false }
         }
     }
 
     private func formatDuration(_ seconds: UInt64) -> String {
-        let days = seconds / 86_400
-        let hours = (seconds % 86_400) / 3_600
-        let minutes = (seconds % 3_600) / 60
-        let secs = seconds % 60
-        if days > 0 { return "\(days)d \(hours)h" }
-        if hours > 0 { return "\(hours)h \(minutes)m" }
-        // Below an hour, show seconds so the per-second local tick (#221) is
-        // actually visible rather than appearing frozen at "0h". Cast to Int:
-        // %d expects a 32-bit-sized argument, and these UInt64 values are
-        // always small (< 3600) so the cast is lossless.
-        return String(format: "%d:%02d", Int(minutes), Int(secs))
+        DateTimeFormatter.shared.formatDurationInSeconds(seconds)
     }
 }
 
@@ -1005,7 +1076,7 @@ struct DepositView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .overlay { if isDepositing { ProgressView() } }
+            .overlay { if isDepositing { ProgressView().respectsReduceMotion() } }
         }
     }
 
@@ -1066,7 +1137,7 @@ struct WithdrawView: View {
                 Button("Cancel") { dismiss() }
             }
         }
-        .overlay { if isWithdrawing { ProgressView() } }
+        .overlay { if isWithdrawing { ProgressView().respectsReduceMotion() } }
     }
 
     private func withdraw() {
@@ -1305,7 +1376,7 @@ struct TwoFactorSetupView: View {
                         Button("Cancel") { dismiss() }
                     }
                 }
-                .overlay { if isSettingUp { ProgressView() } }
+                .overlay { if isSettingUp { ProgressView().respectsReduceMotion() } }
                 .onAppear {
                     // #227: Default to first available method if totp is unavailable.
                     if !availableMethods.contains(selectedMethod), let first = availableMethods.first {
@@ -1479,7 +1550,7 @@ struct TwoFactorVerifyView: View {
                 .multilineTextAlignment(.center)
                 .font(.callout)
             if isGeneratingBackupCodes {
-                ProgressView("Generating codes…")
+                ProgressView("Generating codes…").respectsReduceMotion()
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     ForEach(backupCodes, id: \.self) { code in
@@ -1641,6 +1712,7 @@ struct VaultActionDeepLinkView: View {
         Group {
             if isLoading && vault == nil {
                 ProgressView("Loading vault…")
+                    .respectsReduceMotion()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 switch action {

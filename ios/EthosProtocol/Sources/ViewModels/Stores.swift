@@ -59,6 +59,7 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
+                BiometricTimeoutIndicatorService.shared.startTimeout()
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
@@ -81,9 +82,7 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
-                if !PINAuthenticationService.shared.isPINSetup() {
-                    showPINSetup = true
-                }
+                BiometricTimeoutIndicatorService.shared.startTimeout()
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
@@ -105,6 +104,7 @@ final class AuthStore: ObservableObject {
             KeychainService.shared.saveToken(token.token, expiresAt: token.expiresAt)
             ifNotCancelled {
                 isAuthenticated = true
+                BiometricTimeoutIndicatorService.shared.startTimeout()
                 scheduleRefresh(before: token.expiresAt)
             }
         } catch {
@@ -116,6 +116,7 @@ final class AuthStore: ObservableObject {
     func signOut() async {
         refreshTask?.cancel()
         refreshTask = nil
+        BiometricTimeoutIndicatorService.shared.stopTimeout()
         // Unregister before dropping the auth token: the request needs the
         // still-valid Bearer token to authenticate, or the server rejects it.
         if let pushToken = KeychainService.shared.loadPushToken() {
@@ -144,10 +145,14 @@ final class AuthStore: ObservableObject {
         switch phase {
         case .background:
             backgroundedAt = now
+            BiometricTimeoutIndicatorService.shared.stopTimeout()
         case .active:
             if let backgroundedAt, isAuthenticated,
                now.timeIntervalSince(backgroundedAt) >= ReLockTimeoutOption.current.seconds {
                 isLocked = true
+                BiometricTimeoutIndicatorService.shared.stopTimeout()
+            } else if isAuthenticated && !isLocked {
+                BiometricTimeoutIndicatorService.shared.startTimeout()
             }
             backgroundedAt = nil
         case .inactive:
@@ -545,6 +550,8 @@ final class VaultStore: ObservableObject {
             NotificationService.shared.scheduleCheckInReminder(
                 vaultID: vault.id, vaultName: vault.id, ttlRemaining: ttl,
                 checkInInterval: vault.checkInInterval)
+            VaultExpiryNotificationService.shared.scheduleVaultExpiryNotifications(
+                vaultID: vault.id, vaultName: vault.id, ttlRemaining: ttl)
         }
     }
 }

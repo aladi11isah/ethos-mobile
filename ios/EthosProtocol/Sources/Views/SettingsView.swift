@@ -3,7 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @State private var iCloudSyncEnabled = ICloudSyncService.shared.isSyncEnabled
     @State private var reLockTimeout = ReLockTimeoutOption.current
-    @State private var showPINChange = false
+    @State private var hapticFeedbackEnabled = HapticFeedbackService.isEnabled
 
     var body: some View {
         Form {
@@ -36,18 +36,16 @@ struct SettingsView: View {
             }
 
             Section {
-                if PINAuthenticationService.shared.isPINSetup() {
-                    Button("Change PIN", action: { showPINChange = true })
-                        .foregroundStyle(.blue)
-                } else {
-                    Button("Set Up PIN", action: { showPINChange = true })
-                        .foregroundStyle(.blue)
-                }
-                Text("Your PIN will be used if biometric authentication is unavailable.")
+                Toggle("Haptic Feedback", isOn: $hapticFeedbackEnabled)
+                    .onChange(of: hapticFeedbackEnabled) { _, newValue in
+                        HapticFeedbackService.isEnabled = newValue
+                        HapticFeedbackService.shared.lightImpact()
+                    }
+                Text("Enable haptic feedback for successful actions, errors, and biometric unlock.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } header: {
-                Text("Biometric Fallback")
+                Text("Feedback")
             }
 
             #if DEBUG
