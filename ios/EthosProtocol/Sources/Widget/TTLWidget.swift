@@ -166,25 +166,35 @@ struct TTLWidgetView: View {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
             Text(entry.vaultName)
                 .font(.headline)
                 .lineLimit(1)
+                .accessibilityLabel("Vault name")
+                .accessibilityValue(entry.vaultName)
             if let ttl = entry.ttlRemaining {
                 Text(formatDuration(ttl))
                     .font(.subheadline)
                     .foregroundStyle(entry.isExpiringSoon ? .orange : .secondary)
+                    .accessibilityLabel("Time remaining")
+                    .accessibilityValue(formatDuration(ttl))
             } else {
                 Text("—").font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityLabel("Time remaining")
+                    .accessibilityValue("Unknown")
             }
             if entry.isExpiringSoon {
                 Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
+                    .accessibilityLabel("Warning")
+                    .accessibilityValue("Vault expiring soon")
             }
         }
         .padding()
         .containerBackground(.regularMaterial, for: .widget)
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: .systemMedium — TTL + balance
@@ -193,30 +203,42 @@ struct TTLWidgetView: View {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
             Text(entry.vaultName)
                 .font(.headline)
                 .lineLimit(1)
+                .accessibilityLabel("Vault name")
+                .accessibilityValue(entry.vaultName)
             if let ttl = entry.ttlRemaining {
                 Text(formatDuration(ttl))
                     .font(.subheadline)
                     .foregroundStyle(entry.isExpiringSoon ? .orange : .secondary)
+                    .accessibilityLabel("Time remaining")
+                    .accessibilityValue(formatDuration(ttl))
             } else {
                 Text("—").font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityLabel("Time remaining")
+                    .accessibilityValue("Unknown")
             }
             HStack {
                 Label(entry.balance, systemImage: "dollarsign.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("Balance")
+                    .accessibilityValue(entry.balance)
             }
             if entry.isExpiringSoon {
                 Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
+                    .accessibilityLabel("Warning")
+                    .accessibilityValue("Vault expiring soon")
             }
         }
         .padding()
         .containerBackground(.regularMaterial, for: .widget)
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: .systemLarge — TTL + balance + beneficiary
@@ -225,44 +247,64 @@ struct TTLWidgetView: View {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
             Text(entry.vaultName)
                 .font(.title3.bold())
                 .lineLimit(1)
+                .accessibilityLabel("Vault name")
+                .accessibilityValue(entry.vaultName)
             Divider()
+                .accessibilityHidden(true)
             if let ttl = entry.ttlRemaining {
                 LabeledContent(LocalizedStrings.ttlLabel) {
                     Text(formatDuration(ttl))
                         .foregroundStyle(entry.isExpiringSoon ? .orange : .primary)
                 }
                 .font(.subheadline)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Time remaining")
+                .accessibilityValue(formatDuration(ttl))
             } else {
                 LabeledContent(LocalizedStrings.ttlLabel) {
                     Text("—").foregroundStyle(.secondary)
                 }
                 .font(.subheadline)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Time remaining")
+                .accessibilityValue("Unknown")
             }
             LabeledContent(LocalizedStrings.balanceLabel) {
                 Text(entry.balance)
                     .foregroundStyle(.secondary)
             }
             .font(.subheadline)
-            LabeledContent(LocalizedStrings.beneficiaryLabel) {
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Balance")
+            .accessibilityValue(entry.balance)
+            LabeledContent("Beneficiary") {
                 Text(entry.beneficiary)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             .font(.subheadline)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Beneficiary")
+            .accessibilityValue(entry.beneficiary)
             if entry.isExpiringSoon {
                 Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .padding(.top, 4)
+                    .accessibilityLabel("Warning")
+                    .accessibilityValue("Vault expiring soon")
             }
             Spacer()
+                .accessibilityHidden(true)
         }
         .padding()
         .containerBackground(.regularMaterial, for: .widget)
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: .accessoryRectangular / .accessoryCircular — compact lock-screen view
@@ -271,25 +313,35 @@ struct TTLWidgetView: View {
             Label(LocalizedStrings.widgetTitle, systemImage: "lock.shield.fill")
                 .font(.caption2.bold())
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
             Text(entry.vaultName)
                 .font(.headline)
                 .lineLimit(1)
+                .accessibilityLabel("Vault name")
+                .accessibilityValue(entry.vaultName)
             if let ttl = entry.ttlRemaining {
                 Text(formatDuration(ttl))
                     .font(.subheadline)
                     .foregroundStyle(entry.isExpiringSoon ? .orange : .secondary)
+                    .accessibilityLabel("Time remaining")
+                    .accessibilityValue(formatDuration(ttl))
             } else {
                 Text("—").font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityLabel("Time remaining")
+                    .accessibilityValue("Unknown")
             }
             if entry.isExpiringSoon {
                 Label(LocalizedStrings.expiringsoon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
+                    .accessibilityLabel("Warning")
+                    .accessibilityValue("Vault expiring soon")
             }
         }
         .padding()
         .containerBackground(.regularMaterial, for: .widget)
         .widgetURL(URL(string: "ethosprotocol://vault/\(entry.vaultID)/view-details"))
+        .accessibilityElement(children: .combine)
     }
 
     private func formatDuration(_ seconds: UInt64) -> String {

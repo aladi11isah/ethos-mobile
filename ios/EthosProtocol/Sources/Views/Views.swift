@@ -47,6 +47,7 @@ private struct PrivacyOverlayView: View {
         }
         .ignoresSafeArea()
         .transition(.opacity)
+        .respectsReduceMotion()
     }
 }
 
@@ -216,7 +217,7 @@ struct AuthView: View {
                     .font(.footnote)
             }
             .padding(32)
-            .overlay { if authStore.isLoading { ProgressView() } }
+            .overlay { if authStore.isLoading { ProgressView().respectsReduceMotion() } }
             .sheet(isPresented: $showRegister) { RegisterView() }
             .sheet(isPresented: $showRecovery) { RecoverAccessView() }
         }
@@ -346,7 +347,7 @@ struct VaultListView: View {
                         .padding()
                 }
                 if vaultStore.isLoading && vaultStore.vaults.isEmpty {
-                    ProgressView("Loading vaults…")
+                    ProgressView("Loading vaults…").respectsReduceMotion()
                 } else if vaultStore.vaults.isEmpty {
                     ContentUnavailableView("No Vaults", systemImage: "lock.open", description: Text("Create your first vault to get started."))
                 } else {
@@ -454,7 +455,7 @@ struct LoadMoreRow: View {
         HStack {
             Spacer()
             if isLoading {
-                ProgressView()
+                ProgressView().respectsReduceMotion()
             } else {
                 Button("Load More", action: action)
                     .font(.subheadline)
@@ -585,6 +586,7 @@ struct VaultDetailView: View {
                     }
                 } else {
                     ProgressView()
+                        .respectsReduceMotion()
                         .task { await load2FAStatus() }
                 }
             }
@@ -869,7 +871,7 @@ struct DepositView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .overlay { if isDepositing { ProgressView() } }
+            .overlay { if isDepositing { ProgressView().respectsReduceMotion() } }
         }
     }
 
@@ -930,7 +932,7 @@ struct WithdrawView: View {
                 Button("Cancel") { dismiss() }
             }
         }
-        .overlay { if isWithdrawing { ProgressView() } }
+        .overlay { if isWithdrawing { ProgressView().respectsReduceMotion() } }
     }
 
     private func withdraw() {
@@ -1169,7 +1171,7 @@ struct TwoFactorSetupView: View {
                         Button("Cancel") { dismiss() }
                     }
                 }
-                .overlay { if isSettingUp { ProgressView() } }
+                .overlay { if isSettingUp { ProgressView().respectsReduceMotion() } }
                 .onAppear {
                     // #227: Default to first available method if totp is unavailable.
                     if !availableMethods.contains(selectedMethod), let first = availableMethods.first {
@@ -1343,7 +1345,7 @@ struct TwoFactorVerifyView: View {
                 .multilineTextAlignment(.center)
                 .font(.callout)
             if isGeneratingBackupCodes {
-                ProgressView("Generating codes…")
+                ProgressView("Generating codes…").respectsReduceMotion()
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     ForEach(backupCodes, id: \.self) { code in
@@ -1505,6 +1507,7 @@ struct VaultActionDeepLinkView: View {
         Group {
             if isLoading && vault == nil {
                 ProgressView("Loading vault…")
+                    .respectsReduceMotion()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 switch action {
